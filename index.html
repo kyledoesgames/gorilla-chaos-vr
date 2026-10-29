@@ -1,1 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gorilla Chaos VR</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background: #75cfff;
+}
+#menu {
+  position: fixed;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  padding: 15px;
+  background: #123b2b;
+  color: white;
+  border-radius: 15px;
+  max-width: 260px;
+}
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 4px;
+  background: #9cff85;
+  font-weight: bold;
+  cursor: pointer;
+}
+#help { font-size: 12px; }
+</style>
+</head>
+<body>
 
+<div id="menu">
+  <h2>🦍 Gorilla Chaos VR</h2>
+  <p id="status">FOREST WORLD</p>
+  <p>Explore the jungle!</p>
+  <button id="jump">SUPER JUMP</button>
+  <button id="vr">ENTER VR</button>
+  <p id="help">
+    WASD: Move<br>
+    Mouse: Look around<br>
+    Space: Jump<br>
+    Quest: Use your VR controllers
+  </p>
+</div>
+
+<script type="module">
+import * as THREE from
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x83d8ff);
+scene.fog = new THREE.Fog(0x83d8ff, 35, 120);
+
+const camera = new THREE.PerspectiveCamera(
+  75, innerWidth / innerHeight, 0.1, 200
+);
+camera.position.set(0, 2, 8);
+
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x42643a, 2));
+
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(-10, 20, 10);
+scene.add(sun);
+
+const material = color =>
+  new THREE.MeshStandardMaterial({color, roughness: 0.9});
+
+const grass = material(0x45b957);
+const wood = material(0x80502f);
+const leaves = material(0x168747);
+const leaves2 = material(0x36bd59);
+const rock = material(0x78838a);
+const gold = material(0xffce45);
+
+function block(x,y,z,w,h,d,mat) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,d), mat
+  );
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+function ball(x,y,z,r,mat) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(r,16,12), mat
+  );
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+// FOREST FLOOR
+block(0,-0.5,0,100,1,100,grass);
+
+// GIANT TREES
+for(let i=0;i<18;i++){
+  const a = i/18*Math.PI*2;
+  const x = Math.cos(a)*20;
+  const z = Math.sin(a)*20;
+
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.6,1,6,10),wood
+  );
+  trunk.position.set(x,2.5,z);
+  scene.add(trunk);
+
+  ball(x,6,z,3,i%2 ? leaves : leaves2);
+  block(x+2,1,z,3,0.5,3,wood);
+}
+
+// PARKOUR PLATFORMS
+block(-5,1,-7,5,0.5,4,wood);
+block(-9,2.5,-10,3,0.5,3,gold);
+block(1,2,-12,4,0.5,3,rock);
+block(7,3.2,-15,4,0.5,3,wood);
+block(11,1,-5,4,0.5,4,rock);
+block(14,2,-8,3,0.5,3,gold);
+block(-12,1,5,5,0.5,4,rock);
+block(-15,2,2,3,0.5,3,wood);
+
+// CAVE
+ball(-20,1,-8,4,rock);
+block(-17,0.1,-8,6,0.5,7,material(0x26343b));
+block(-16,1.2,-8,4,2.5,0.5,material(0x17242c));
+
+// FLOATING RINGS
+for(let i=0;i<6;i++){
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.7,0.12,8,24),gold
+  );
+  ring.position.set(-8+i*3,4,-15);
+  scene.add(ring);
+  ring.userData.spin = true;
+}
+
+// PLAYER
+const player = new THREE.Group();
+scene.add(player);
+
+const body = ball(0,0,0,0.45,material(0x8755ff));
+const head = ball(0,0,0,0.36,material(0xa17cff));
+const muzzle = ball(0,0,0,0.2,material(0x503b69));
+
+const hands = [
+  ball(0,0,0,0.17,material(0xff9955)),
+  ball(0,0,0,0.17,material(0x50dcff))
+];
+
+const eyes = [
+  ball(0,0,0,0.06,material(0xffffff)),
+  ball(0,0,0,0.06,material(0xffffff))
+];
+
+const pupils = [
+  ball(0,0,0,0.025,material(0x111111)),
+  ball(0,0,0,0.025,material(0x111111))
+];
+
+const keys = {};
+let yaw = 0;
+let pitch = 0;
+let velocity = new THREE.Vector3();
+let superJump = true;
+let last = performance.now();
+let dragging = false;
+let lastX = 0;
+let lastY = 0;
+
+addEventListener('keydown',e=>{
+  keys[e.code] = true;
+  if(e.code === 'Space' && player.position.y <= 0.02){
+    velocity.y = superJump ? 10 : 6;
+  }
+});
+
+addEventListener('keyup',e=>keys[e.code]=false);
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  dragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+
+addEventListener('pointerup',()=>dragging=false);
+
+addEventListener('pointermove',e=>{
+  if(!dragging || renderer.xr.isPresenting) return;
+  yaw -= (e.clientX-lastX)*0.004;
+  pitch -= (e.clientY-lastY)*0.003;
+  pitch = THREE.MathUtils.clamp(pitch,-1,1);
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+
+document.getElementById('jump').onclick=()=>{
+  superJump = !superJump;
+  document.getElementById('jump').textContent =
+    superJump ? 'SUPER JUMP: ON' : 'SUPER JUMP: OFF';
+};
+
+document.getElementById('vr').onclick=async()=>{
+  try {
+    if(!navigator.xr){
+      alert('Open this game in a compatible VR browser using HTTPS.');
+      return;
+    }
+    const supported = await navigator.xr
+      .isSessionSupported('immersive-vr');
+    if(!supported){
+      alert('VR is not supported by this browser.');
+      return;
+    }
+    const session = await navigator.xr.requestSession(
+      'immersive-vr',
+      {optionalFeatures:['local-floor','bounded-floor']}
+    );
+    await renderer.xr.setSession(session);
+  } catch(e) {
+    alert('Could not start VR: '+e.message);
+  }
+};
+
+renderer.xr.addEventListener('sessionstart',()=>{
+  document.getElementById('status').textContent='VR MODE ACTIVE';
+});
+
+function update(dt){
+  if(!renderer.xr.isPresenting){
+    const forward = new THREE.Vector3(
+      -Math.sin(yaw),0,-Math.cos(yaw)
+    );
+    const right = new THREE.Vector3(
+      Math.cos(yaw),0,-Math.sin(yaw)
+    );
+
+    if(keys.KeyW){
+      velocity.x += forward.x*12*dt;
+      velocity.z += forward.z*12*dt;
+    }
+    if(keys.KeyS){
+      velocity.x -= forward.x*12*dt;
+      velocity.z -= forward.z*12*dt;
+    }
+    if(keys.KeyA){
+      velocity.x -= right.x*12*dt;
+      velocity.z -= right.z*12*dt;
+    }
+    if(keys.KeyD){
+      velocity.x += right.x*12*dt;
+      velocity.z += right.z*12*dt;
+    }
+
+    camera.rotation.set(pitch,yaw,0,'YXZ');
+  }
+
+  velocity.y -= 18*dt;
+  velocity.x *= Math.pow(0.985,dt*60);
+  velocity.z *= Math.pow(0.985,dt*60);
+
+  velocity.x = THREE.MathUtils.clamp(velocity.x,-12,12);
+  velocity.z = THREE.MathUtils.clamp(velocity.z,-12,12);
+
+  player.position.addScaledVector(velocity,dt);
+
+  if(player.position.y < 0){
+    player.position.y = 0;
+    velocity.y = 0;
+  }
+
+  if(!renderer.xr.isPresenting){
+    camera.position.set(
+      player.position.x,
+      player.position.y+1.8,
+      player.position.z+0.5
+    );
+  }
+
+  body.position.set(player.position.x,player.position.y+0.9,player.position.z);
+  head.position.set(player.position.x,player.position.y+1.5,player.position.z);
+  muzzle.position.set(player.position.x,player.position.y+1.45,player.position.z-0.3);
+
+  eyes[0].position.set(player.position.x-0.13,player.position.y+1.6,player.position.z-0.3);
+  eyes[1].position.set(player.position.x+0.13,player.position.y+1.6,player.position.z-0.3);
+
+  pupils[0].position.set(player.position.x-0.13,player.position.y+1.6,player.position.z-0.35);
+  pupils[1].position.set(player.position.x+0.13,player.position.y+1.6,player.position.z-0.35);
+
+  hands[0].position.set(player.position.x-0.5,player.position.y+1.05,player.position.z-0.35);
+  hands[1].position.set(player.position.x+0.5,player.position.y+1.05,player.position.z-0.35);
+}
+
+renderer.setAnimationLoop(now=>{
+  const dt = Math.min((now-last)/1000,0.035);
+  last = now;
+  update(dt);
+
+  scene.children.forEach(o=>{
+    if(o.userData.spin) o.rotation.y += dt;
+  });
+
+  renderer.render(scene,camera);
+});
+
+addEventListener('resize',()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
