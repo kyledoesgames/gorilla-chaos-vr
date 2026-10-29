@@ -1,326 +1,422 @@
-DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gorilla Chaos VR</title>
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+<title>Gorilla Chaos VR: NIGHTMARE</title>
+
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-  background: #75cfff;
-}
-#menu {
-  position: fixed;
-  z-index: 5;
-  top: 12px;
-  left: 12px;
-  padding: 15px;
-  background: #123b2b;
-  color: white;
-  border-radius: 15px;
-  max-width: 260px;
-}
-button {
-  border: 0;
-  border-radius: 10px;
-  padding: 12px;
-  margin: 4px;
-  background: #9cff85;
-  font-weight: bold;
-  cursor: pointer;
-}
-#help { font-size: 12px; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+  }
+
+  #menu {
+    position: fixed;
+    z-index: 10;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 15px;
+    color: white;
+    background: #101010e8;
+    border: 2px solid #39ff14;
+    border-radius: 14px;
+    text-align: center;
+  }
+
+  button {
+    padding: 12px 18px;
+    margin: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  #vrButton {
+    background: #39ff14;
+  }
+
+  #horrorButton {
+    background: #c00020;
+    color: white;
+  }
+
+  #message {
+    font-size: 14px;
+    margin-top: 8px;
+  }
 </style>
 </head>
-<body>
 
+<body>
 <div id="menu">
-  <h2>🦍 Gorilla Chaos VR</h2>
-  <p id="status">FOREST WORLD</p>
-  <p>Explore the jungle!</p>
-  <button id="jump">SUPER JUMP</button>
-  <button id="vr">ENTER VR</button>
-  <p id="help">
-    WASD: Move<br>
-    Mouse: Look around<br>
-    Space: Jump<br>
-    Quest: Use your VR controllers
-  </p>
+  <h2>🦍 GORILLA CHAOS VR</h2>
+  <p>Explore the forest. Whatever you do, don't let it catch you.</p>
+  <button id="vrButton">🥽 ENTER VR</button>
+  <button id="horrorButton">👹 HORROR MODE: OFF</button>
+  <div id="message">Find a way to survive.</div>
 </div>
 
 <script type="module">
 import * as THREE from
 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
+// ---------------- SETUP ----------------
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x83d8ff);
-scene.fog = new THREE.Fog(0x83d8ff, 35, 120);
+scene.background = new THREE.Color(0x87ceeb);
 
 const camera = new THREE.PerspectiveCamera(
-  75, innerWidth / innerHeight, 0.1, 200
+  75, innerWidth / innerHeight, 0.05, 150
 );
-camera.position.set(0, 2, 8);
 
-const renderer = new THREE.WebGLRenderer({antialias: true});
-renderer.setSize(innerWidth, innerHeight);
+const renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
 renderer.xr.enabled = true;
+
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x42643a, 2));
+const rig = new THREE.Group();
+scene.add(rig);
+rig.add(camera);
+camera.position.set(0, 1.6, 0);
 
-const sun = new THREE.DirectionalLight(0xffffff, 2);
-sun.position.set(-10, 20, 10);
-scene.add(sun);
+// ---------------- LIGHTING ----------------
 
-const material = color =>
-  new THREE.MeshStandardMaterial({color, roughness: 0.9});
+const skyLight = new THREE.HemisphereLight(
+  0xffffff, 0x405040, 2
+);
+scene.add(skyLight);
 
-const grass = material(0x45b957);
-const wood = material(0x80502f);
-const leaves = material(0x168747);
-const leaves2 = material(0x36bd59);
-const rock = material(0x78838a);
-const gold = material(0xffce45);
+const sunlight = new THREE.DirectionalLight(0xffffff, 1.5);
+sunlight.position.set(5, 12, 5);
+scene.add(sunlight);
 
-function block(x,y,z,w,h,d,mat) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(w,h,d), mat
-  );
-  mesh.position.set(x,y,z);
-  mesh.castShadow = true;
-  scene.add(mesh);
-  return mesh;
-}
+// ---------------- FOREST ----------------
 
-function ball(x,y,z,r,mat) {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(r,16,12), mat
-  );
-  mesh.position.set(x,y,z);
-  mesh.castShadow = true;
-  scene.add(mesh);
-  return mesh;
-}
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ color: 0x367b32 })
+);
 
-// FOREST FLOOR
-block(0,-0.5,0,100,1,100,grass);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 0;
+scene.add(ground);
 
-// GIANT TREES
-for(let i=0;i<18;i++){
-  const a = i/18*Math.PI*2;
-  const x = Math.cos(a)*20;
-  const z = Math.sin(a)*20;
+// Trees
+for (let i = 0; i < 45; i++) {
+  const x = (Math.random() - 0.5) * 65;
+  const z = (Math.random() - 0.5) * 65;
+
+  if (Math.abs(x) < 3 && Math.abs(z) < 5) continue;
 
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.6,1,6,10),wood
+    new THREE.CylinderGeometry(0.2, 0.35, 3, 7),
+    new THREE.MeshStandardMaterial({ color: 0x624127 })
   );
-  trunk.position.set(x,2.5,z);
+
+  trunk.position.set(x, 1.5, z);
   scene.add(trunk);
 
-  ball(x,6,z,3,i%2 ? leaves : leaves2);
-  block(x+2,1,z,3,0.5,3,wood);
-}
-
-// PARKOUR PLATFORMS
-block(-5,1,-7,5,0.5,4,wood);
-block(-9,2.5,-10,3,0.5,3,gold);
-block(1,2,-12,4,0.5,3,rock);
-block(7,3.2,-15,4,0.5,3,wood);
-block(11,1,-5,4,0.5,4,rock);
-block(14,2,-8,3,0.5,3,gold);
-block(-12,1,5,5,0.5,4,rock);
-block(-15,2,2,3,0.5,3,wood);
-
-// CAVE
-ball(-20,1,-8,4,rock);
-block(-17,0.1,-8,6,0.5,7,material(0x26343b));
-block(-16,1.2,-8,4,2.5,0.5,material(0x17242c));
-
-// FLOATING RINGS
-for(let i=0;i<6;i++){
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.7,0.12,8,24),gold
+  const leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5, 7, 6),
+    new THREE.MeshStandardMaterial({ color: 0x176c29 })
   );
-  ring.position.set(-8+i*3,4,-15);
-  scene.add(ring);
-  ring.userData.spin = true;
+
+  leaves.position.set(x, 3.5, z);
+  scene.add(leaves);
 }
 
-// PLAYER
-const player = new THREE.Group();
-scene.add(player);
+// ---------------- PLATFORMS ----------------
 
-const body = ball(0,0,0,0.45,material(0x8755ff));
-const head = ball(0,0,0,0.36,material(0xa17cff));
-const muzzle = ball(0,0,0,0.2,material(0x503b69));
+for (let i = 0; i < 8; i++) {
+  const platform = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 0.4, 3),
+    new THREE.MeshStandardMaterial({ color: 0x93643c })
+  );
 
-const hands = [
-  ball(0,0,0,0.17,material(0xff9955)),
-  ball(0,0,0,0.17,material(0x50dcff))
-];
+  platform.position.set(
+    (i % 4) * 4 - 6,
+    1 + Math.floor(i / 4) * 1.5,
+    -8
+  );
 
-const eyes = [
-  ball(0,0,0,0.06,material(0xffffff)),
-  ball(0,0,0,0.06,material(0xffffff))
-];
+  scene.add(platform);
+}
 
-const pupils = [
-  ball(0,0,0,0.025,material(0x111111)),
-  ball(0,0,0,0.025,material(0x111111))
-];
+// ---------------- CONTROLLER HANDS ----------------
 
-const keys = {};
-let yaw = 0;
-let pitch = 0;
-let velocity = new THREE.Vector3();
-let superJump = true;
-let last = performance.now();
-let dragging = false;
-let lastX = 0;
-let lastY = 0;
+const controllers = [];
+const previousHands = [];
+const handWorldPositions = [];
 
-addEventListener('keydown',e=>{
-  keys[e.code] = true;
-  if(e.code === 'Space' && player.position.y <= 0.02){
-    velocity.y = superJump ? 10 : 6;
+for (let i = 0; i < 2; i++) {
+  const controller = renderer.xr.getController(i);
+
+  const hand = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 12, 10),
+    new THREE.MeshStandardMaterial({
+      color: i === 0 ? 0xffb28a : 0xff7545
+    })
+  );
+
+  hand.position.set(0, 0, 0);
+  controller.add(hand);
+  rig.add(controller);
+
+  controllers.push(controller);
+  previousHands.push(new THREE.Vector3());
+  handWorldPositions.push(new THREE.Vector3());
+}
+
+// ---------------- MONSTER ----------------
+
+// Upload your image to the repository as monster.jpg.
+const textureLoader = new THREE.TextureLoader();
+
+const monsterMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  side: THREE.DoubleSide,
+  transparent: false
+});
+
+const monster = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.8, 2.4),
+  monsterMaterial
+);
+
+monster.visible = false;
+scene.add(monster);
+
+textureLoader.load(
+  './monster.jpg',
+  texture => {
+    monsterMaterial.map = texture;
+    monsterMaterial.needsUpdate = true;
+  },
+  undefined,
+  () => {
+    document.getElementById('message').textContent =
+      'Monster picture missing! Upload monster.jpg to GitHub.';
   }
-});
+);
 
-addEventListener('keyup',e=>keys[e.code]=false);
+// ---------------- HORROR MODE ----------------
 
-renderer.domElement.addEventListener('pointerdown',e=>{
-  dragging = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
-});
+let horrorMode = false;
+let gameOver = false;
+let monsterDistance = 18;
+let scareTimer = 0;
 
-addEventListener('pointerup',()=>dragging=false);
+const normalBackground = new THREE.Color(0x87ceeb);
+const horrorBackground = new THREE.Color(0x050008);
 
-addEventListener('pointermove',e=>{
-  if(!dragging || renderer.xr.isPresenting) return;
-  yaw -= (e.clientX-lastX)*0.004;
-  pitch -= (e.clientY-lastY)*0.003;
-  pitch = THREE.MathUtils.clamp(pitch,-1,1);
-  lastX = e.clientX;
-  lastY = e.clientY;
-});
+document.getElementById('horrorButton').onclick = () => {
+  horrorMode = !horrorMode;
 
-document.getElementById('jump').onclick=()=>{
-  superJump = !superJump;
-  document.getElementById('jump').textContent =
-    superJump ? 'SUPER JUMP: ON' : 'SUPER JUMP: OFF';
+  gameOver = false;
+  monsterDistance = 18;
+
+  scene.background.copy(
+    horrorMode ? horrorBackground : normalBackground
+  );
+
+  scene.fog = horrorMode
+    ? new THREE.Fog(0x090009, 2, 25)
+    : null;
+
+  skyLight.intensity = horrorMode ? 0.2 : 2;
+  sunlight.intensity = horrorMode ? 0.05 : 1.5;
+
+  monster.visible = horrorMode;
+
+  document.getElementById('horrorButton').textContent =
+    horrorMode ? '😈 HORROR MODE: ON' : '👹 HORROR MODE: OFF';
+
+  document.getElementById('message').textContent =
+    horrorMode
+      ? 'RUN. IT KNOWS WHERE YOU ARE.'
+      : 'The forest seems safe... for now.';
 };
 
-document.getElementById('vr').onclick=async()=>{
+// ---------------- MOVEMENT ----------------
+
+const playerVelocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+
+let lastTime = performance.now();
+
+function updateMovement(dt) {
+  const cameraWorld = new THREE.Vector3();
+  camera.getWorldPosition(cameraWorld);
+
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+
+  if (forward.lengthSq() > 0.001) forward.normalize();
+
+  right.set(forward.z, 0, -forward.x);
+
+  // Approximate Gorilla Tag-style pushing:
+  // moving a controller down near the floor pushes the player upward;
+  // moving it while touching the floor pushes the player horizontally.
+  for (let i = 0; i < controllers.length; i++) {
+    controllers[i].getWorldPosition(handWorldPositions[i]);
+
+    const handPos = handWorldPositions[i];
+    const previous = previousHands[i];
+
+    if (previous.lengthSq() > 0) {
+      const movement = handPos.clone().sub(previous);
+      const nearGround = handPos.y < 0.65;
+
+      if (nearGround && movement.length() > 0.015) {
+        rig.position.x -= movement.x * 1.8;
+        rig.position.z -= movement.z * 1.8;
+
+        if (movement.y < -0.025) {
+          playerVelocity.y = Math.min(
+            playerVelocity.y + Math.abs(movement.y) * 5,
+            4.5
+          );
+        }
+      }
+    }
+
+    previous.copy(handPos);
+  }
+
+  // Gravity and jumping
+  playerVelocity.y -= 9.8 * dt;
+  rig.position.y += playerVelocity.y * dt;
+
+  if (rig.position.y < 0) {
+    rig.position.y = 0;
+    playerVelocity.y = 0;
+  }
+
+  // Keep the player inside the map
+  rig.position.x = THREE.MathUtils.clamp(
+    rig.position.x, -45, 45
+  );
+
+  rig.position.z = THREE.MathUtils.clamp(
+    rig.position.z, -45, 45
+  );
+}
+
+// ---------------- MONSTER AI ----------------
+
+function updateMonster(dt) {
+  if (!horrorMode || gameOver) return;
+
+  const playerPosition = new THREE.Vector3();
+  camera.getWorldPosition(playerPosition);
+
+  const toPlayer = playerPosition.clone().sub(monster.position);
+  const distance = toPlayer.length();
+
+  scareTimer += dt;
+
+  // The monster chases the player.
+  if (distance > 0.001) {
+    toPlayer.normalize();
+
+    const speed = 1.5;
+
+    monster.position.addScaledVector(
+      toPlayer, speed * dt
+    );
+  }
+
+  // Always face the player
+  monster.lookAt(playerPosition.x, monster.position.y,
+                 playerPosition.z);
+
+  // Appear ahead of the player when horror mode starts.
+  if (monsterDistance > 0) {
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+
+    monster.position.copy(playerPosition)
+      .addScaledVector(cameraDirection, monsterDistance);
+
+    monster.position.y = playerPosition.y;
+    monsterDistance = 0;
+  }
+
+  if (distance < 1.2) {
+    gameOver = true;
+
+    document.getElementById('message').textContent =
+      '💀 IT CAUGHT YOU! Turn Horror Mode off to try again.';
+
+    monster.scale.set(1.8, 1.8, 1.8);
+  }
+}
+
+// ---------------- VR BUTTON ----------------
+
+document.getElementById('vrButton').onclick = async () => {
   try {
-    if(!navigator.xr){
-      alert('Open this game in a compatible VR browser using HTTPS.');
+    if (!navigator.xr) {
+      alert('WebXR is unavailable. Open the game in the Quest browser.');
       return;
     }
-    const supported = await navigator.xr
-      .isSessionSupported('immersive-vr');
-    if(!supported){
-      alert('VR is not supported by this browser.');
+
+    const supported =
+      await navigator.xr.isSessionSupported('immersive-vr');
+
+    if (!supported) {
+      alert('VR is not supported in this browser session.');
       return;
     }
+
     const session = await navigator.xr.requestSession(
       'immersive-vr',
-      {optionalFeatures:['local-floor','bounded-floor']}
+      { optionalFeatures: ['local-floor'] }
     );
+
     await renderer.xr.setSession(session);
-  } catch(e) {
-    alert('Could not start VR: '+e.message);
+
+    document.getElementById('menu').style.display = 'none';
+  } catch (error) {
+    alert('Could not enter VR: ' + error.message);
   }
 };
 
-renderer.xr.addEventListener('sessionstart',()=>{
-  document.getElementById('status').textContent='VR MODE ACTIVE';
+// ---------------- GAME LOOP ----------------
+
+renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  const dt = Math.min((now - lastTime) / 1000, 0.04);
+  lastTime = now;
+
+  updateMovement(dt);
+  updateMonster(dt);
+
+  renderer.render(scene, camera);
 });
 
-function update(dt){
-  if(!renderer.xr.isPresenting){
-    const forward = new THREE.Vector3(
-      -Math.sin(yaw),0,-Math.cos(yaw)
-    );
-    const right = new THREE.Vector3(
-      Math.cos(yaw),0,-Math.sin(yaw)
-    );
+// ---------------- RESIZE ----------------
 
-    if(keys.KeyW){
-      velocity.x += forward.x*12*dt;
-      velocity.z += forward.z*12*dt;
-    }
-    if(keys.KeyS){
-      velocity.x -= forward.x*12*dt;
-      velocity.z -= forward.z*12*dt;
-    }
-    if(keys.KeyA){
-      velocity.x -= right.x*12*dt;
-      velocity.z -= right.z*12*dt;
-    }
-    if(keys.KeyD){
-      velocity.x += right.x*12*dt;
-      velocity.z += right.z*12*dt;
-    }
-
-    camera.rotation.set(pitch,yaw,0,'YXZ');
-  }
-
-  velocity.y -= 18*dt;
-  velocity.x *= Math.pow(0.985,dt*60);
-  velocity.z *= Math.pow(0.985,dt*60);
-
-  velocity.x = THREE.MathUtils.clamp(velocity.x,-12,12);
-  velocity.z = THREE.MathUtils.clamp(velocity.z,-12,12);
-
-  player.position.addScaledVector(velocity,dt);
-
-  if(player.position.y < 0){
-    player.position.y = 0;
-    velocity.y = 0;
-  }
-
-  if(!renderer.xr.isPresenting){
-    camera.position.set(
-      player.position.x,
-      player.position.y+1.8,
-      player.position.z+0.5
-    );
-  }
-
-  body.position.set(player.position.x,player.position.y+0.9,player.position.z);
-  head.position.set(player.position.x,player.position.y+1.5,player.position.z);
-  muzzle.position.set(player.position.x,player.position.y+1.45,player.position.z-0.3);
-
-  eyes[0].position.set(player.position.x-0.13,player.position.y+1.6,player.position.z-0.3);
-  eyes[1].position.set(player.position.x+0.13,player.position.y+1.6,player.position.z-0.3);
-
-  pupils[0].position.set(player.position.x-0.13,player.position.y+1.6,player.position.z-0.35);
-  pupils[1].position.set(player.position.x+0.13,player.position.y+1.6,player.position.z-0.35);
-
-  hands[0].position.set(player.position.x-0.5,player.position.y+1.05,player.position.z-0.35);
-  hands[1].position.set(player.position.x+0.5,player.position.y+1.05,player.position.z-0.35);
-}
-
-renderer.setAnimationLoop(now=>{
-  const dt = Math.min((now-last)/1000,0.035);
-  last = now;
-  update(dt);
-
-  scene.children.forEach(o=>{
-    if(o.userData.spin) o.rotation.y += dt;
-  });
-
-  renderer.render(scene,camera);
-});
-
-addEventListener('resize',()=>{
-  camera.aspect = innerWidth/innerHeight;
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
+
+  renderer.setSize(innerWidth, innerHeight);
 });
 </script>
 </body>
